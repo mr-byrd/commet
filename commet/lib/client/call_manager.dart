@@ -100,6 +100,12 @@ class CallManager {
 
     if (event.state == VoipState.connected) {
       joinCallSound();
+
+      // Apply persisted mute state for sessions that start as connected (e.g. LiveKit)
+      var lastMuted = getMutedStateForClient(event.client);
+      if (lastMuted) {
+        event.setMicrophoneMute(true);
+      }
     }
 
     event.onConnectionStateChanged.listen((_) => onCallStateChanged(event));
@@ -183,7 +189,6 @@ class CallManager {
     _onMuteStateChanged.add(true);
   }
 
-  bool fakeToggle = false;
   void toggleMute() {
     var session = currentSessions.firstOrNull;
 
@@ -194,19 +199,10 @@ class CallManager {
         mute();
       }
     } else {
-      fakeToggle = !fakeToggle;
-
-      // just to give user feedback when not in a call
-      if (fakeToggle) {
-        playMuteSound();
-        _saveMuteState(true);
-        _lastKnownMutedState = true;
-        _onMuteStateChanged.add(true);
+      if (_lastKnownMutedState) {
+        unmute();
       } else {
-        playUnmuteSound();
-        _saveMuteState(false);
-        _lastKnownMutedState = false;
-        _onMuteStateChanged.add(false);
+        mute();
       }
     }
   }

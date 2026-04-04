@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:commet/client/components/direct_messages/direct_message_component.dart';
 import 'package:commet/client/components/voip/voip_session.dart';
 import 'package:commet/client/room.dart';
+import 'package:commet/main.dart';
 import 'package:commet/ui/organisms/mini_call_menu/mini_call_menu_connected.dart';
 import 'package:commet/ui/organisms/mini_call_menu/mini_call_menu_incoming.dart';
 import 'package:flutter/material.dart';
@@ -57,8 +58,11 @@ class _MiniCallMenuState extends State<MiniCallMenu> {
             widget.session.hangUpCall();
           },
           onToggleMute: () async {
-            await widget.session
-                .setMicrophoneMute(!widget.session.isMicrophoneMuted);
+            if (widget.session.isMicrophoneMuted) {
+              clientManager?.callManager.unmute();
+            } else {
+              clientManager?.callManager.mute();
+            }
             setState(() {});
           },
         );
