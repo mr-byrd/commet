@@ -1,4 +1,6 @@
+import 'package:collection/collection.dart';
 import 'package:commet/client/components/profile/profile_component.dart';
+import 'package:commet/client/components/voip/voip_session.dart';
 import 'package:commet/config/layout_config.dart';
 import 'package:commet/main.dart';
 import 'package:commet/ui/atoms/adaptive_context_menu.dart';
@@ -148,6 +150,23 @@ class MainPageViewDesktop extends StatelessWidget {
       current = clientManager!.clients.first.self;
     }
 
+    bool isMuted = false;
+
+    if (current != null) {
+      var owningClient = clientManager!.clients.firstWhereOrNull(
+          (c) => c.self?.identifier == current!.identifier);
+      if (owningClient != null) {
+        var session = state.clientManager.callManager.currentSessions
+            .where((s) => s.client == owningClient)
+            .firstOrNull;
+        if (session != null && session.state == VoipState.connected) {
+          isMuted = session.isMicrophoneMuted;
+        } else {
+          isMuted = state.clientManager.callManager.getMutedStateForClient(owningClient);
+        }
+      }
+    }
+
     return Material(
       color: Colors.transparent,
       child: SizedBox(
@@ -194,11 +213,26 @@ class MainPageViewDesktop extends StatelessWidget {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            tiamat.Text.name(
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                color: current.defaultColor,
-                                current.displayName),
+                            Row(
+                              children: [
+                                Flexible(
+                                  child: tiamat.Text.name(
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      color: current.defaultColor,
+                                      current.displayName),
+                                ),
+                                const SizedBox(width: 4),
+                                Icon(
+                                  isMuted ? Icons.mic_off : Icons.mic,
+                                  size: 14,
+                                  color: Theme.of(context)
+                                      .colorScheme
+                                      .onSurface
+                                      .withOpacity(0.7),
+                                ),
+                              ],
+                            ),
                             Material(
                               color: Colors.transparent,
                               child: InkWell(

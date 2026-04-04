@@ -1,11 +1,13 @@
 import 'dart:async';
 
+import 'package:commet/client/call_manager.dart';
 import 'package:commet/client/components/voip/voip_session.dart';
 import 'package:commet/client/components/voip_room/voip_room_component.dart';
 import 'package:commet/client/matrix/components/matrix_sync_listener.dart';
 import 'package:commet/client/matrix/components/voip_room/matrix_livekit_backend.dart';
 import 'package:commet/client/matrix/matrix_client.dart';
 import 'package:commet/client/matrix/matrix_room.dart';
+import 'package:commet/main.dart' as app_main;
 import 'package:matrix/matrix.dart';
 
 class MatrixVoipRoomComponent

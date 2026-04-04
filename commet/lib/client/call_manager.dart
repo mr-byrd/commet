@@ -7,6 +7,7 @@ import 'package:commet/client/components/push_notification/notification_content.
 import 'package:commet/client/components/push_notification/notification_manager.dart';
 import 'package:commet/client/components/voip/voip_component.dart';
 import 'package:commet/client/components/voip/voip_session.dart';
+import 'package:commet/client/matrix/matrix_client.dart';
 import 'package:commet/client/stale_info.dart';
 import 'package:commet/config/platform_utils.dart';
 import 'package:commet/main.dart';
@@ -18,6 +19,10 @@ class CallManager {
   ClientManager clientManager;
   final StreamController<VoipSession> _onSessionStarted =
       StreamController.broadcast();
+
+  final StreamController<bool> _onMuteStateChanged =
+      StreamController<bool>.broadcast();
+  Stream<bool> get onMuteStateChanged => _onMuteStateChanged.stream;
 
   String notificationContentUserIsCalling(String user) => Intl.message(
       "$user is calling!",
@@ -148,12 +153,34 @@ class CallManager {
     player?.setPlaylistMode(PlaylistMode.none);
   }
 
+  static const String _voipMuteStateKey = "im.commet.voip_muted_state";
+
+  Future<void> _saveMuteState(bool muted) async {
+    for (var client in clientManager.clients) {
+      if (client is MatrixClient) {
+        await client.matrixClient.setAccountData(
+          client.matrixClient.userID!,
+          _voipMuteStateKey,
+          {"muted": muted},
+        );
+      }
+    }
+  }
+
+  bool _lastKnownMutedState = false;
+  bool getMutedStateForClient(Client client) {
+    return _lastKnownMutedState;
+  }
+
   void mute() {
     for (var session in currentSessions) {
       session.setMicrophoneMute(true);
     }
 
     playMuteSound();
+    _saveMuteState(true);
+    _lastKnownMutedState = true;
+    _onMuteStateChanged.add(true);
   }
 
   bool fakeToggle = false;
@@ -172,8 +199,14 @@ class CallManager {
       // just to give user feedback when not in a call
       if (fakeToggle) {
         playMuteSound();
+        _saveMuteState(true);
+        _lastKnownMutedState = true;
+        _onMuteStateChanged.add(true);
       } else {
         playUnmuteSound();
+        _saveMuteState(false);
+        _lastKnownMutedState = false;
+        _onMuteStateChanged.add(false);
       }
     }
   }
@@ -196,6 +229,9 @@ class CallManager {
     }
 
     playUnmuteSound();
+    _saveMuteState(false);
+    _lastKnownMutedState = false;
+    _onMuteStateChanged.add(false);
   }
 
   void playUnmuteSound() {
@@ -230,6 +266,11 @@ class CallManager {
 
     if (event.state == VoipState.connected) {
       joinCallSound();
+
+      var lastMuted = getMutedStateForClient(event.client);
+      if (lastMuted) {
+        event.setMicrophoneMute(true);
+      }
     }
   }
 

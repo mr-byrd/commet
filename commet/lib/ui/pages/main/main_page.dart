@@ -57,8 +57,11 @@ class MainPageState extends State<MainPage> {
   StreamSubscription? onSpaceUpdateSubscription;
   StreamSubscription? onRoomUpdateSubscription;
   StreamSubscription? onCallStartedSubscription;
+  StreamSubscription? onMuteStateChangedSubscription;
   StreamSubscription? onClientRemovedSubscription;
   StreamSubscription? onClientAddedSubscription;
+
+  List<StreamSubscription> _sessionStateSubscriptions = [];
 
   MainPageSubView get currentView => _currentView;
 
@@ -112,6 +115,14 @@ class MainPageState extends State<MainPage> {
     onCallStartedSubscription =
         clientManager.callManager.currentSessions.onListUpdated.listen((event) {
       setState(() {});
+      _setupSessionStateListeners();
+    });
+
+    _setupSessionStateListeners();
+
+    onMuteStateChangedSubscription =
+        clientManager.callManager.onMuteStateChanged.listen((_) {
+      if (mounted) setState(() {});
     });
 
     EventBus.openRoom.stream.listen(onOpenRoomSignal);
@@ -146,8 +157,12 @@ class MainPageState extends State<MainPage> {
     onSpaceUpdateSubscription?.cancel();
     onRoomUpdateSubscription?.cancel();
     onCallStartedSubscription?.cancel();
+    onMuteStateChangedSubscription?.cancel();
     onClientRemovedSubscription?.cancel();
     onClientAddedSubscription?.cancel();
+    for (var sub in _sessionStateSubscriptions) {
+      sub.cancel();
+    }
     ServicesBinding.instance.keyboard.removeHandler(_onKeyPressed);
     super.dispose();
   }
@@ -190,6 +205,20 @@ class MainPageState extends State<MainPage> {
       return MainPageViewMobile(this);
     } else {
       return MainPageViewDesktop(this);
+    }
+  }
+
+  void _setupSessionStateListeners() {
+    for (var sub in _sessionStateSubscriptions) {
+      sub.cancel();
+    }
+    _sessionStateSubscriptions.clear();
+
+    for (var session in clientManager.callManager.currentSessions) {
+      var sub = session.onStateChanged.listen((_) {
+        if (mounted) setState(() {});
+      });
+      _sessionStateSubscriptions.add(sub);
     }
   }
 
